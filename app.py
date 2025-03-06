@@ -103,7 +103,7 @@ with st.sidebar:
 # Main App
 st.title("BudgetByte")
 
-# Income Management (Moved to Top)
+# Income Management (Top Section)
 st.subheader("Income Management")
 with st.form("income_form"):
     income = st.number_input("Monthly Income ($)", min_value=0.0, value=st.session_state.income)
@@ -122,60 +122,61 @@ col1, col2 = st.columns([1, 2])
 
 with col1:
     st.subheader("Expense Management")
+    # Always show add expense fields
+    st.write("### Add New Expense")
+    category = st.text_input("Category", "")
+    forecast = st.number_input("Forecast ($)", min_value=0.0, value=0.0)
+    actual = st.number_input("Actual ($)", min_value=0.0, value=0.0)
+    comments = st.text_input("Comments", "")
+    if st.button("Add Expense"):
+        if not category or forecast < 0 or actual < 0:
+            st.error("Category, Forecast, and Actual must be filled, and values cannot be negative.")
+        else:
+            if not st.session_state.current_data.empty and any(exp["category"].lower() == category.lower() for _, exp in st.session_state.current_data.iterrows()):
+                st.warning("Category already exists. Proceeding to add.")
+            new_exp = pd.DataFrame({
+                "id": [st.session_state.next_id],
+                "year": [st.session_state.selected_year],
+                "month": [st.session_state.selected_month],
+                "category": [category],
+                "forecast": [forecast],
+                "actual": [actual],
+                "comments": [comments]
+            })
+            st.session_state.all_expenses = pd.concat([st.session_state.all_expenses, new_exp], ignore_index=True)
+            if st.session_state.current_data.empty or st.session_state.selected_year == year and st.session_state.selected_month == month_num:
+                st.session_state.current_data = pd.concat([st.session_state.current_data, new_exp], ignore_index=True)
+            st.session_state.next_id += 1
+            st.success("Expense added!")
+
+    # Show edit/delete options if data is loaded
     if not st.session_state.current_data.empty:
+        st.write("### Edit or Delete Expense")
         selected_id = st.selectbox(
             "Select Expense",
-            options=["Add New"] + st.session_state.current_data["id"].tolist(),
-            format_func=lambda x: "Add New" if x == "Add New" else st.session_state.current_data[st.session_state.current_data["id"] == x]["category"].iloc[0]
+            options=st.session_state.current_data["id"].tolist(),
+            format_func=lambda x: st.session_state.current_data[st.session_state.current_data["id"] == x]["category"].iloc[0]
         )
-
-        if selected_id == "Add New":
-            category = st.text_input("Category")
-            forecast = st.number_input("Forecast ($)", min_value=0.0, value=0.0)
-            actual = st.number_input("Actual ($)", min_value=0.0, value=0.0)
-            comments = st.text_input("Comments")
-            if st.button("Add Expense"):
-                if not category or forecast < 0 or actual < 0:
-                    st.error("Category, Forecast, and Actual must be filled, and values cannot be negative.")
+        exp = st.session_state.current_data[st.session_state.current_data["id"] == selected_id].iloc[0]
+        new_category = st.text_input("Category", value=exp["category"])
+        new_forecast = st.number_input("Forecast ($)", min_value=0.0, value=float(exp["forecast"]))
+        new_actual = st.number_input("Actual ($)", min_value=0.0, value=float(exp["actual"]))
+        new_comments = st.text_input("Comments", value=exp["comments"])
+        col_edit, col_delete = st.columns(2)
+        with col_edit:
+            if st.button("Save Changes"):
+                if not new_category or new_forecast < 0 or new_actual < 0:
+                    st.error("Category cannot be empty, and values cannot be negative.")
                 else:
-                    if any(exp["category"].lower() == category.lower() for _, exp in st.session_state.current_data.iterrows()):
-                        st.warning("Category already exists. Proceeding to add.")
-                    new_exp = pd.DataFrame({
-                        "id": [st.session_state.next_id],
-                        "year": [st.session_state.selected_year],
-                        "month": [st.session_state.selected_month],
-                        "category": [category],
-                        "forecast": [forecast],
-                        "actual": [actual],
-                        "comments": [comments]
-                    })
-                    st.session_state.all_expenses = pd.concat([st.session_state.all_expenses, new_exp], ignore_index=True)
-                    st.session_state.current_data = pd.concat([st.session_state.current_data, new_exp], ignore_index=True)
-                    st.session_state.next_id += 1
-                    st.success("Expense added!")
-        else:
-            exp = st.session_state.current_data[st.session_state.current_data["id"] == selected_id].iloc[0]
-            new_category = st.text_input("Category", value=exp["category"])
-            new_forecast = st.number_input("Forecast ($)", min_value=0.0, value=float(exp["forecast"]))
-            new_actual = st.number_input("Actual ($)", min_value=0.0, value=float(exp["actual"]))
-            new_comments = st.text_input("Comments", value=exp["comments"])
-            col_edit, col_delete = st.columns(2)
-            with col_edit:
-                if st.button("Save Changes"):
-                    if not new_category or new_forecast < 0 or new_actual < 0:
-                        st.error("Category cannot be empty, and values cannot be negative.")
-                    else:
-                        mask = st.session_state.all_expenses["id"] == selected_id
-                        st.session_state.all_expenses.loc[mask, ["category", "forecast", "actual", "comments"]] = [new_category, new_forecast, new_actual, new_comments]
-                        st.session_state.current_data.loc[st.session_state.current_data["id"] == selected_id, ["category", "forecast", "actual", "comments"]] = [new_category, new_forecast, new_actual, new_comments]
-                        st.success("Expense updated!")
-            with col_delete:
-                if st.button("Delete Expense"):
-                    st.session_state.all_expenses = st.session_state.all_expenses[st.session_state.all_expenses["id"] != selected_id]
-                    st.session_state.current_data = st.session_state.current_data[st.session_state.current_data["id"] != selected_id]
-                    st.success("Expense deleted!")
-    else:
-        st.info("Load data to manage expenses.")
+                    mask = st.session_state.all_expenses["id"] == selected_id
+                    st.session_state.all_expenses.loc[mask, ["category", "forecast", "actual", "comments"]] = [new_category, new_forecast, new_actual, new_comments]
+                    st.session_state.current_data.loc[st.session_state.current_data["id"] == selected_id, ["category", "forecast", "actual", "comments"]] = [new_category, new_forecast, new_actual, new_comments]
+                    st.success("Expense updated!")
+        with col_delete:
+            if st.button("Delete Expense"):
+                st.session_state.all_expenses = st.session_state.all_expenses[st.session_state.all_expenses["id"] != selected_id]
+                st.session_state.current_data = st.session_state.current_data[st.session_state.current_data["id"] != selected_id]
+                st.success("Expense deleted!")
 
 with col2:
     st.subheader("Current Expenses")
