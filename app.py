@@ -40,7 +40,7 @@ def save_income(year, month, income, extra_income):
         new_row = pd.DataFrame({"year": [year], "month": [month], "income": [income], "extra_income": [extra_income]})
         st.session_state.all_income = pd.concat([st.session_state.all_income, new_row], ignore_index=True)
 
-# Budget Analysis Functions (Adapted from Tkinter)
+# Budget Analysis Functions
 def suggest_budget_adjustments(expenses):
     suggestions = []
     for _, exp in expenses.iterrows():
@@ -84,7 +84,7 @@ def analyze_budget(expenses, total_income, new_expense=None):
     insights.append(f"📊 Financial Health Score: {score}/100")
     return insights
 
-# Sidebar for Year and Month Selection
+# Sidebar for Filters
 with st.sidebar:
     st.header("Filters")
     year = st.number_input("Year", min_value=2000, max_value=2100, value=st.session_state.selected_year)
@@ -102,6 +102,20 @@ with st.sidebar:
 
 # Main App
 st.title("BudgetByte")
+
+# Income Management (Moved to Top)
+st.subheader("Income Management")
+with st.form("income_form"):
+    income = st.number_input("Monthly Income ($)", min_value=0.0, value=st.session_state.income)
+    extra_income = st.number_input("Extra Income ($)", min_value=0.0, value=st.session_state.extra_income)
+    if st.form_submit_button("Update Income"):
+        if income < 0 or extra_income < 0:
+            st.error("Income values cannot be negative.")
+        else:
+            save_income(st.session_state.selected_year, st.session_state.selected_month, income, extra_income)
+            st.session_state.income = income
+            st.session_state.extra_income = extra_income
+            st.success("Income updated!")
 
 # Expense Management Section
 col1, col2 = st.columns([1, 2])
@@ -121,11 +135,11 @@ with col1:
             actual = st.number_input("Actual ($)", min_value=0.0, value=0.0)
             comments = st.text_input("Comments")
             if st.button("Add Expense"):
-                if not category:
-                    st.error("Category must be filled.")
-                elif any(exp["category"].lower() == category.lower() for _, exp in st.session_state.current_data.iterrows()):
-                    st.warning("Category already exists. Proceeding to add.")
+                if not category or forecast < 0 or actual < 0:
+                    st.error("Category, Forecast, and Actual must be filled, and values cannot be negative.")
                 else:
+                    if any(exp["category"].lower() == category.lower() for _, exp in st.session_state.current_data.iterrows()):
+                        st.warning("Category already exists. Proceeding to add.")
                     new_exp = pd.DataFrame({
                         "id": [st.session_state.next_id],
                         "year": [st.session_state.selected_year],
@@ -145,18 +159,21 @@ with col1:
             new_forecast = st.number_input("Forecast ($)", min_value=0.0, value=float(exp["forecast"]))
             new_actual = st.number_input("Actual ($)", min_value=0.0, value=float(exp["actual"]))
             new_comments = st.text_input("Comments", value=exp["comments"])
-            if st.button("Save Changes"):
-                if not new_category:
-                    st.error("Category cannot be empty.")
-                else:
-                    mask = st.session_state.all_expenses["id"] == selected_id
-                    st.session_state.all_expenses.loc[mask, ["category", "forecast", "actual", "comments"]] = [new_category, new_forecast, new_actual, new_comments]
-                    st.session_state.current_data.loc[st.session_state.current_data["id"] == selected_id, ["category", "forecast", "actual", "comments"]] = [new_category, new_forecast, new_actual, new_comments]
-                    st.success("Expense updated!")
-            if st.button("Delete Expense"):
-                st.session_state.all_expenses = st.session_state.all_expenses[st.session_state.all_expenses["id"] != selected_id]
-                st.session_state.current_data = st.session_state.current_data[st.session_state.current_data["id"] != selected_id]
-                st.success("Expense deleted!")
+            col_edit, col_delete = st.columns(2)
+            with col_edit:
+                if st.button("Save Changes"):
+                    if not new_category or new_forecast < 0 or new_actual < 0:
+                        st.error("Category cannot be empty, and values cannot be negative.")
+                    else:
+                        mask = st.session_state.all_expenses["id"] == selected_id
+                        st.session_state.all_expenses.loc[mask, ["category", "forecast", "actual", "comments"]] = [new_category, new_forecast, new_actual, new_comments]
+                        st.session_state.current_data.loc[st.session_state.current_data["id"] == selected_id, ["category", "forecast", "actual", "comments"]] = [new_category, new_forecast, new_actual, new_comments]
+                        st.success("Expense updated!")
+            with col_delete:
+                if st.button("Delete Expense"):
+                    st.session_state.all_expenses = st.session_state.all_expenses[st.session_state.all_expenses["id"] != selected_id]
+                    st.session_state.current_data = st.session_state.current_data[st.session_state.current_data["id"] != selected_id]
+                    st.success("Expense deleted!")
     else:
         st.info("Load data to manage expenses.")
 
@@ -169,17 +186,6 @@ with col2:
         st.dataframe(styled_df)
     else:
         st.info("No expenses loaded.")
-
-# Income Management
-st.subheader("Income Management")
-with st.form("income_form"):
-    income = st.number_input("Monthly Income ($)", min_value=0.0, value=st.session_state.income)
-    extra_income = st.number_input("Extra Income ($)", min_value=0.0, value=st.session_state.extra_income)
-    if st.form_submit_button("Update Income"):
-        save_income(st.session_state.selected_year, st.session_state.selected_month, income, extra_income)
-        st.session_state.income = income
-        st.session_state.extra_income = extra_income
-        st.success("Income updated!")
 
 # Summary Section
 st.subheader("Summary")
