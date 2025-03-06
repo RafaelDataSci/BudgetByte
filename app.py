@@ -152,7 +152,7 @@ with st.sidebar:
                 st.session_state.font_size -= 2
                 st.rerun()
 
-# Apply custom font size via CSS
+# Apply custom font size via CSS (Fixed f-string syntax)
 st.markdown(
     f"""
     <style>
@@ -161,9 +161,9 @@ st.markdown(
     .stButton > button,
     .stDataFrame,
     .stMarkdown,
-    .element-container {
+    .element-container {{
         font-size: {st.session_state.font_size}px !important;
-    }
+    }}
     </style>
     """,
     unsafe_allow_html=True
@@ -268,7 +268,7 @@ if not st.session_state.current_data.empty:
     total_income = st.session_state.income + st.session_state.extra_income
     st.write(f"Total Forecast: ${total_forecast:,.2f}")
     st.write(f"Total Actual: ${total_actual:,.2f}")
-    budget_status = "Surplus: ${:,.2f}".format(total_income - total_actual) if total_income >= total_actual else "Deficit: ${:,.2f}".format(total_actual - total_income)
+    budget_status = f"Surplus: ${total_income - total_actual:,.2f}" if total_income >= total_actual else f"Deficit: ${total_actual - total_income:,.2f}"
     st.write(f"Budget Status: {budget_status}")
 
 # Additional Features
