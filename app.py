@@ -268,7 +268,8 @@ if not st.session_state.current_data.empty:
     total_income = st.session_state.income + st.session_state.extra_income
     st.write(f"Total Forecast: ${total_forecast:,.2f}")
     st.write(f"Total Actual: ${total_actual:,.2f}")
-    st.write(f"Budget Status: {'Surplus: $' + str((total_income - total_actual):,.2f) if total_income >= total_actual else 'Deficit: $' + str((total_actual - total_income):,.2f)}")
+    budget_status = "Surplus: ${:,.2f}".format(total_income - total_actual) if total_income >= total_actual else "Deficit: ${:,.2f}".format(total_actual - total_income)
+    st.write(f"Budget Status: {budget_status}")
 
 # Additional Features
 if st.button("Calculate Net Actual"):
